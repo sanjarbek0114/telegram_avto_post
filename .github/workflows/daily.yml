@@ -40,6 +40,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Ixtiyoriy: Gemini band bo'lsa matn uchun zaxira
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Ixtiyoriy, bepul: yaxshiroq zaxira rasm uchun
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          POLLINATIONS_KEY: ${{ secrets.POLLINATIONS_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

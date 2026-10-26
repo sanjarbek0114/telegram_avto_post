@@ -4,9 +4,11 @@ Uslub har doim bir xil: yorqin 3D render (Pixar/Disney), yoqimli robotlar, baxtl
 zamonaviy robototexnika laboratoriyasi. Abstrakt/geometrik chiziqli rasm hech qachon chizilmaydi.
 
 Navbat: 1) oldindan tayyorlangan rasm (state/prepared), 2) Nano Banana, 3) Gemini Imagen,
-4) Pollinations (bepul, qisqa va aniq inglizcha prompt, bir necha urinish),
-5) avval chiqqan sifatli rasmlardan biri (state/gallery). Hech biri bo'lmasa post rasmsiz chiqadi.
+4) Hugging Face FLUX (HF_TOKEN bo'lsa, bepul), 5) Pollinations (qisqa va aniq inglizcha prompt).
+Har bir rasmni Gemini ko'zi bilan baholaymiz (uslub, mazmun, abstrakt chiziq yo'qligi); eng yaxshisi olinadi.
+6) avval chiqqan sifatli rasmlardan biri (state/gallery). Hech biri bo'lmasa post rasmsiz chiqadi.
 """
+import io
 import os
 import random
 import shutil
@@ -17,11 +19,13 @@ import requests
 from google.genai import errors as genai_errors
 from google.genai import types
 
-from .common import ROOT, _version, gemini, generate
+from .common import ROOT, _version, gemini, generate, parse_json
 
 PREPARED = ROOT / "state/prepared"
 GALLERY = ROOT / "state/gallery"
 GALLERY_KEEP = 10
+GOOD_SCORE = 7  # shundan past rasm kanalga chiqmaydi
+MIN_SCORE = 5
 
 STYLE = ("Bright colorful 3D render in Pixar / Disney animation style, cinematic soft lighting, "
          "vivid cheerful colors, glossy materials, shallow depth of field, professional high quality, "
@@ -99,20 +103,78 @@ def _gemini_image(prompt):
     return None
 
 
-def _pollinations(prompt, attempts=4):
-    url = "https://image.pollinations.ai/prompt/" + urllib.parse.quote(prompt)
-    for i in range(attempts):
-        try:
-            print(f"  -> pollinations (urinish {i + 1})", flush=True)
-            r = requests.get(url, params={"width": 1024, "height": 1024, "nologo": "true", "model": "flux",
-                                          "seed": random.randint(1, 10**6)}, timeout=150)
-            if r.ok and r.headers.get("content-type", "").startswith("image/") and len(r.content) > 30_000:
-                return r.content
-            print(f"  !! pollinations: {r.status_code}", flush=True)
-        except requests.RequestException as e:
-            print(f"  !! pollinations: {e}", flush=True)
-        time.sleep(20 * (i + 1))
+def _huggingface(prompt):
+    token = os.getenv("HF_TOKEN")
+    if not token:
+        return None
+    model = os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
+    try:
+        print(f"  -> huggingface {model}", flush=True)
+        r = requests.post(f"https://router.huggingface.co/hf-inference/models/{model}",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"inputs": prompt, "parameters": {"width": 1024, "height": 1024}}, timeout=180)
+        if r.ok and r.headers.get("content-type", "").startswith("image/"):
+            return r.content
+        print(f"  !! huggingface: {r.status_code} {r.text[:150]}", flush=True)
+    except requests.RequestException as e:
+        print(f"  !! huggingface: {e}", flush=True)
     return None
+
+
+def _remove_watermark(data):
+    """Kalitsiz Pollinations pastki o'ng burchakka logo qo'yadi: chetini qirqib tashlaymiz."""
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    w, h = img.size
+    cut = int(h * 0.075)
+    img = img.crop((cut // 2, 0, w - cut // 2, h - cut)).resize((1024, 1024), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _pollinations(prompt):
+    key = os.getenv("POLLINATIONS_KEY")
+    params = {"width": 1024, "height": 1024, "nologo": "true", "model": "flux",
+              "seed": random.randint(1, 10**6)}
+    if key:
+        url = "https://gen.pollinations.ai/image/" + urllib.parse.quote(prompt)
+        headers = {"Authorization": f"Bearer {key}"}
+    else:
+        url = "https://image.pollinations.ai/prompt/" + urllib.parse.quote(prompt)
+        headers = {}
+    try:
+        print("  -> pollinations", flush=True)
+        r = requests.get(url, params=params, headers=headers, timeout=150)
+        if r.ok and r.headers.get("content-type", "").startswith("image/") and len(r.content) > 20_000:
+            return r.content if key else _remove_watermark(r.content)
+        print(f"  !! pollinations: {r.status_code}", flush=True)
+    except requests.RequestException as e:
+        print(f"  !! pollinations: {e}", flush=True)
+    return None
+
+
+JUDGE = """You are a strict art director for a kids robotics course Telegram channel.
+Rate this image from 1 to 10. Requirements: bright, colorful 3D render in Pixar/Disney style; cute friendly
+robots with glowing eyes, and/or happy kids building circuits, and/or a modern robotics lab; professional,
+appealing to kids and parents. Give a LOW score (1-4) for: abstract or geometric line art, dark or gloomy mood,
+scary or creepy robots, distorted faces or hands, visible text, letters or watermarks, low quality.
+Return JSON only: {"score": number, "reason": "short"}"""
+
+
+def judge(data):
+    """5-agent ko'zi: rasm talabga mosmi. Baholab bo'lmasa None."""
+    mime = "image/jpeg" if data[:3] == b"\xff\xd8\xff" else "image/png"
+    try:
+        resp = generate("text", [types.Part.from_bytes(data=data, mime_type=mime), JUDGE],
+                        types.GenerateContentConfig(response_mime_type="application/json"))
+        res = parse_json(resp.text or "")
+        print(f"  rasm bahosi: {res.get('score')} ({res.get('reason', '')[:120]})", flush=True)
+        return float(res.get("score", 0))
+    except Exception as e:  # noqa: BLE001
+        print(f"  !! rasm baholanmadi: {str(e)[:150]}", flush=True)
+        return None
 
 
 def prepared_path(plan_n, cycle):
@@ -129,15 +191,32 @@ def _to_gallery(path):
 def generate_image(scene_hint, out_path, plan_n=None):
     """Faqat AI manbalaridan yangi rasm. Natija: (path, manba) yoki (None, None)."""
     prompt = compose_prompt(scene_hint, plan_n)
-    for source, fn, p in (("Nano Banana", _gemini_image, prompt), ("Imagen", _imagen, prompt),
-                          ("Pollinations", _pollinations, pollinations_prompt(plan_n))):
-        data = fn(p)
-        if data:
-            print(f"3-agent: rasm manbasi {source}", flush=True)
-            out_path.write_bytes(data)
-            _to_gallery(out_path)
-            return out_path, source
-    return None, None
+    short = pollinations_prompt(plan_n)
+    sources = (("Nano Banana", _gemini_image, prompt, 1), ("Imagen", _imagen, prompt, 1),
+               ("Hugging Face", _huggingface, short, 2), ("Pollinations", _pollinations, short, 4))
+    best = (None, None, -1.0)  # data, manba, ball
+    for source, fn, p, tries in sources:
+        for _ in range(tries):
+            data = fn(p)
+            if not data:
+                break
+            score = judge(data)
+            if score is None:
+                score = GOOD_SCORE  # baholovchi ishlamasa ham AI rasmi abstrakt fondan yaxshi
+            if score > best[2]:
+                best = (data, source, score)
+            if score >= GOOD_SCORE:
+                break
+        if best[2] >= GOOD_SCORE:
+            break
+    data, source, score = best
+    if data is None or score < MIN_SCORE:
+        return None, None
+    print(f"3-agent: rasm manbasi {source}, baho {score}", flush=True)
+    out_path.write_bytes(data)
+    if score >= GOOD_SCORE:
+        _to_gallery(out_path)
+    return out_path, source
 
 
 def make_image(scene_hint, out_path, plan_n=None, cycle=None, keep_prepared=False):

@@ -13,6 +13,7 @@ def make_audio(script, out_path):
         json={"text": script, "model_id": env("ELEVENLABS_MODEL", "eleven_v3")},
         timeout=180,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"ElevenLabs {r.status_code}: {r.text[:300]}")
     out_path.write_bytes(r.content)
     return out_path
