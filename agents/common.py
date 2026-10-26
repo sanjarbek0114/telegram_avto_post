@@ -22,7 +22,10 @@ def env(name, default=None, required=True):
 def gemini():
     global _client
     if _client is None:
-        _client = genai.Client(api_key=env("GEMINI_API_KEY"))
+        _client = genai.Client(
+            api_key=env("GEMINI_API_KEY"),
+            http_options=types.HttpOptions(timeout=180_000, retry_options=types.HttpRetryOptions(attempts=1)),
+        )
     return _client
 
 
@@ -72,9 +75,14 @@ def generate(kind, contents, config):
                 print(f"{name} band, {wait} s kutib qayta urinish ({attempt + 1}/4)", flush=True)
                 time.sleep(wait)
             try:
-                return gemini().models.generate_content(model=name, contents=contents, config=config)
+                t0 = time.time()
+                print(f"  -> {name} ({kind})", flush=True)
+                resp = gemini().models.generate_content(model=name, contents=contents, config=config)
+                print(f"  <- {name}: {time.time() - t0:.0f} s", flush=True)
+                return resp
             except genai_errors.APIError as e:
                 last = e
+                print(f"  !! {name}: {e.code} {str(e)[:150]}", flush=True)
                 if e.code == 404:
                     break  # bu model yopilgan, keyingisiga o'tamiz
                 if e.code not in RETRY_CODES:
