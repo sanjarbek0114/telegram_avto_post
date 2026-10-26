@@ -25,7 +25,7 @@ def gemini():
     if _client is None:
         _client = genai.Client(
             api_key=env("GEMINI_API_KEY"),
-            http_options=types.HttpOptions(timeout=120_000, retry_options=types.HttpRetryOptions(attempts=1)),
+            http_options=types.HttpOptions(timeout=90_000, retry_options=types.HttpRetryOptions(attempts=1)),
         )
     return _client
 
@@ -65,13 +65,17 @@ def models(kind):
 
 
 RETRY_CODES = (429, 500, 502, 503, 504)
+GEMINI_BUDGET = int(os.getenv("GEMINI_BUDGET_SECONDS", "240"))
 
 
 def generate(kind, contents, config):
     """generate_content: band bo'lsa kutib qayta urinadi, keyin keyingi modelga o'tadi."""
     last = None
+    start = time.time()
     for name in models(kind):
         for attempt, wait in enumerate((0, 20, 60)):
+            if last is not None and time.time() - start + wait > GEMINI_BUDGET:
+                raise last  # Gemini juda band: zaxiraga o'tish uchun vaqtni tejaymiz
             if wait:
                 print(f"{name} band, {wait} s kutib qayta urinish ({attempt + 1}/3)", flush=True)
                 time.sleep(wait)
@@ -84,7 +88,7 @@ def generate(kind, contents, config):
             except genai_errors.APIError as e:
                 last = e
                 print(f"  !! {name}: {e.code} {str(e)[:150]}", flush=True)
-                if e.code == 404:
+                if e.code in (404, 504):
                     break  # bu model yopilgan, keyingisiga o'tamiz
                 if e.code not in RETRY_CODES:
                     raise
