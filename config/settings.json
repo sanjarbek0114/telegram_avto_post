@@ -1,4 +1,6 @@
 {
   "mode": "rewrite",
-  "alternate_with_claude_tips": false
+  "alternate_with_claude_tips": false,
+  "audio_every": 3,
+  "audio_first_post": 2
 }

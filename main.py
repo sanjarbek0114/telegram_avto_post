@@ -37,6 +37,25 @@ def wait_until(hhmm):
         time.sleep(secs)
 
 
+def _audio(draft, out):
+    try:
+        audio = make_audio(draft["audio_script"], out / "audio.mp3")
+        log("4-agent: audio tayyor")
+        return audio
+    except Exception as e:  # audio bo'lmasa ham post chiqsin
+        log(f"4-agent: audio tayyorlanmadi ({e}), post audiosiz chiqadi")
+        notify_admin(f"⚠️ Audio tayyorlanmadi, post audiosiz chiqadi: {e}")
+        return None
+
+
+def audio_due(settings, history):
+    """ElevenLabs limitini tejash: audio faqat har N-postda (2, 5, 8, ... -postlar)."""
+    every = settings.get("audio_every", 1)
+    first = settings.get("audio_first_post", 1)
+    n = len(history["posts"]) + 1  # chiqadigan postning tartib raqami
+    return n >= first and (n - first) % every == 0
+
+
 def next_kind(settings, history):
     if not settings.get("alternate_with_claude_tips"):
         return "plan"
@@ -123,13 +142,11 @@ def main():
         image, source = make_image(draft["image_prompt"], out / "image.png", meta.get("plan_n"),
                                    meta.get("cycle"), keep_prepared=dry)
         log(f"3-agent: rasm {'tayyor (' + source + ')' if image else 'yoq'}")
-        try:
-            audio = make_audio(draft["audio_script"], out / "audio.mp3")
-            log("4-agent: audio tayyor")
-        except Exception as e:  # audio bo'lmasa ham post chiqsin
+        if not audio_due(settings, history):
             audio = None
-            log(f"4-agent: audio tayyorlanmadi ({e}), post audiosiz chiqadi")
-            notify_admin(f"⚠️ Audio tayyorlanmadi, post audiosiz chiqadi: {e}")
+            log("4-agent: bu post audiosiz (audio har uchinchi postda)")
+        else:
+            audio = _audio(draft, out)
 
         if dry:
             log(f"DRY RUN: natijalar {out} papkasida")

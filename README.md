@@ -6,6 +6,7 @@ Har kuni 19:00 (Asia/Tashkent) da kanalga rasm, to'liq matn va audio post chiqar
 `config/content_plan.md` dagi 5 ta post navbat bilan chiqadi: 1, 2, 3, 4, 5, keyin yana 1.
 - 1-aylanish: asl matn aynan chiqadi.
 - Keyingi aylanishlar (`config/settings.json` da `"mode": "rewrite"`): mavzu va faktlar saqlanadi, sarlavha, kirish va jumlalar yangicha yoziladi. `"mode": "exact"` bo'lsa har doim asl matn.
+- Audio (`audio_every`, `audio_first_post`): ElevenLabs limitini tejash uchun ovoz faqat har 3-postda qo'shiladi (2, 5, 8, ... -postlar). Har kuni kerak bo'lsa `audio_every` ni 1 qiling.
 - `"alternate_with_claude_tips": true` bo'lsa, kontent-plan bilan "Claude maslahatlar" posti navbatlashadi.
 
 Matn 1024 belgidan uzun bo'lsa: avval rasm, keyin matn, ostidan audio.
