@@ -113,8 +113,13 @@ def main():
         (out / "audio_script.txt").write_text(draft["audio_script"], encoding="utf-8")
         image = make_image(draft["image_prompt"], out / "image.png")
         log("3-agent: rasm tayyor")
-        audio = make_audio(draft["audio_script"], out / "audio.mp3")
-        log("4-agent: audio tayyor")
+        try:
+            audio = make_audio(draft["audio_script"], out / "audio.mp3")
+            log("4-agent: audio tayyor")
+        except Exception as e:  # audio bo'lmasa ham post chiqsin
+            audio = None
+            log(f"4-agent: audio tayyorlanmadi ({e}), post audiosiz chiqadi")
+            notify_admin(f"⚠️ Audio tayyorlanmadi, post audiosiz chiqadi: {e}")
 
         if dry:
             log(f"DRY RUN: natijalar {out} papkasida")

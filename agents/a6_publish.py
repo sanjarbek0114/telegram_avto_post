@@ -25,6 +25,8 @@ def publish(post_text, image_path, audio_path, title):
             _api("sendPhoto", data={"chat_id": chat}, files={"photo": img})
             msg = _api("sendMessage", json={"chat_id": chat, "text": post_text,
                                             "link_preview_options": {"is_disabled": True}})
+    if not audio_path:
+        return msg["message_id"]
     with open(audio_path, "rb") as aud:
         _api("sendAudio", data={"chat_id": chat, "title": title, "performer": "Robototexnika kursi",
                                 "reply_to_message_id": msg["message_id"]},
