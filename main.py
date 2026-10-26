@@ -59,7 +59,11 @@ def build_plan_post(settings, style, history):
     feedback = None
     for attempt in range(1, MAX_REWRITES + 1):
         draft = write_plan_post(post, mode, cycle, angles, feedback)
-        qc = review(draft, post["theme"], style, original=post["text"])
+        if mode == "exact":  # asl matn muallifniki: faqat qoidalar bilan tekshiramiz
+            issues = rule_check(draft, post["text"])
+            qc = {"ok": not issues, "score": None, "issues": issues}
+        else:
+            qc = review(draft, post["theme"], style, original=post["text"])
         log(f"5-agent: urinish {attempt}, ball {qc['score']}, muammolar: {qc['issues']}")
         if qc["ok"]:
             meta = {"kind": "plan", "plan_n": post["n"], "cycle": cycle, "topic": post["theme"]}

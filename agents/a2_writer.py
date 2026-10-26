@@ -1,5 +1,23 @@
 """2-agent: postni berilgan stil va formatda yozadi."""
+import re
+
 from .common import ask
+
+EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2190-\u21FF\u2B00-\u2BFF\uFE0F\u200D]")
+
+
+def plain_audio_script(text, limit=1100):
+    """Model ishlamasa: asl postdan ovoz uchun toza matn (emoji, hashteg, havolasiz)."""
+    text = re.sub(r"https?://\S+|t\.me/\S+|#\w+", "", text)
+    text = EMOJI.sub("", text.replace("→", ":"))
+    lines = [ln.strip(" -:") for ln in text.splitlines() if ln.strip(" -:")]
+    lines = [ln if ln[-1] in ".!?:" else ln + "." for ln in lines]
+    out = ""
+    for ln in lines:
+        if len(out) + len(ln) > limit:
+            break
+        out += ln + " "
+    return out.strip()
 
 OUTPUT_SPEC = """Faqat JSON qaytar:
 {{"post_text": "tayyor post, oddiy matn (HTML/Markdown yo'q), emoji bilan",
@@ -29,9 +47,14 @@ ASL POST:
 {task}
 {fix}
 {OUTPUT_SPEC}"""
-    draft = ask(prompt, json_out=True)
-    if mode == "exact":
-        draft["post_text"] = plan_post["text"]
+    if mode != "exact":
+        return ask(prompt, json_out=True)
+    try:
+        draft = ask(prompt, json_out=True)
+    except Exception as e:  # noqa: BLE001 - asl matn uchun model shart emas
+        print(f"2-agent: model ishlamadi ({str(e)[:120]}), audio matni asl postdan olinadi", flush=True)
+        draft = {"audio_script": plain_audio_script(plan_post["text"]), "image_prompt": ""}
+    draft["post_text"] = plan_post["text"]
     return draft
 
 
