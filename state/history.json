@@ -1,1 +1,13 @@
-{"posts": []}
+{
+  "posts": [
+    {
+      "date": "2026-10-26",
+      "kind": "plan",
+      "plan_n": 1,
+      "cycle": 1,
+      "topic": "Kursga jalb qilish",
+      "score": 10.0,
+      "message_id": 8
+    }
+  ]
+}
