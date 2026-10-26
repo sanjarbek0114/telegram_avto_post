@@ -4,25 +4,15 @@ import requests
 from .common import env
 
 API = "https://api.elevenlabs.io/v1"
-# Hamma yangi akkauntlarda bor standart ovozlar (berilgan ovoz topilmasa navbat bilan sinaladi)
-DEFAULT_VOICES = ("JBFqnCBsd6RMkjVDRZzb", "EXAVITQu4vr4xnSDxMaL", "Xb7hH8MSUJpSbSDYk0k2",
-                  "pNInz6obpgDQGcFmaJgB", "21m05zcH5m83TcN7ExXA")
+# Kanal ovozi: radio boshlovchisidek mayin, yoqimli ayol ovozi (SANJARBEK talabi).
+# Standart kutubxonadagi ayol ovozlari, birinchisi asosiy: Sarah, Matilda, Lily, Alice.
+DEFAULT_VOICES = ("EXAVITQu4vr4xnSDxMaL", "XrExE9yKIg1WjnnlVkGX", "pFZP5JQG7iQjIQuC4Bku",
+                  "Xb7hH8MSUJpSbSDYk0k2")
+MALE_VOICES = {"JBFqnCBsd6RMkjVDRZzb", "pNInz6obpgDQGcFmaJgB"}
 
 
 def _headers():
     return {"xi-api-key": env("ELEVENLABS_API_KEY")}
-
-
-def _account_voices():
-    """Akkauntdagi ovozlar (kalitda voices_read ruxsati bo'lmasa bo'sh ro'yxat)."""
-    try:
-        r = requests.get(f"{API}/voices", headers=_headers(), timeout=30)
-        if r.ok:
-            return [v["voice_id"] for v in r.json().get("voices", [])]
-        print(f"  !! ovozlar ro'yxati olinmadi: {r.status_code}", flush=True)
-    except requests.RequestException as e:
-        print(f"  !! ovozlar ro'yxati olinmadi: {e}", flush=True)
-    return []
 
 
 def _tts(voice, script):
@@ -37,10 +27,14 @@ def _tts(voice, script):
 
 def make_audio(script, out_path):
     voice = env("ELEVENLABS_VOICE_ID", required=False)
-    r = _tts(voice, script) if voice else None
-    if r is None or (r.status_code == 404 and "voice_not_found" in r.text):
+    if not voice or voice in MALE_VOICES:
+        voice = DEFAULT_VOICES[0]
+    r = _tts(voice, script)
+    if r.ok:
+        print(f"4-agent: ovoz {voice} ishlatildi", flush=True)
+    if r.status_code == 404 and "voice_not_found" in r.text:
         print(f"4-agent: ovoz topilmadi ({voice}), boshqa ovoz qidirilmoqda", flush=True)
-        for alt in dict.fromkeys(_account_voices() + list(DEFAULT_VOICES)):
+        for alt in DEFAULT_VOICES:
             if alt == voice:
                 continue
             r = _tts(alt, script)
