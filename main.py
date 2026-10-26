@@ -2,7 +2,7 @@
 import argparse
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -29,8 +29,6 @@ def wait_until(hhmm):
     h, m = map(int, hhmm.split(":"))
     now = datetime.now(TZ)
     target = now.replace(hour=h, minute=m, second=0, microsecond=0)
-    if target < now - timedelta(hours=2):  # kecha uchun emas, bugun uchun
-        target += timedelta(days=1)
     secs = (target - now).total_seconds()
     if secs > 0:
         log(f"{hhmm} gacha kutilmoqda ({int(secs)} s)")
@@ -103,6 +101,11 @@ def main():
     out = ROOT / "out" / datetime.now(TZ).strftime("%Y-%m-%d")
     out.mkdir(parents=True, exist_ok=True)
     settings, style, history = load_settings(), load_style(), load_history()
+
+    today = datetime.now(TZ).date().isoformat()
+    if not dry and any(p.get("date") == today for p in history["posts"]):
+        log("Bugungi post allaqachon chiqqan, o'tkazib yuborildi")
+        return
 
     try:
         if next_kind(settings, history) == "plan":

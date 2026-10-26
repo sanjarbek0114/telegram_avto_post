@@ -5,6 +5,11 @@ on:
     # 13:20 UTC = 18:20 Toshkent. GitHub cron kechikishi mumkin, shuning uchun
     # erta boshlab, post tayyorlanadi va aniq 19:00 da chiqariladi.
     - cron: "20 13 * * *"
+    # Zaxira ishga tushirishlar: GitHub cron ba'zan kechikadi yoki tushib qoladi.
+    # Bugun post chiqqan bo'lsa, keyingilari hech narsa qilmaydi (main.py tekshiradi).
+    - cron: "40 13 * * *"
+    - cron: "55 13 * * *"
+    - cron: "30 14 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -23,6 +28,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main  # eng so'nggi history.json bilan ishlash uchun
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
