@@ -5,8 +5,9 @@ from .common import env
 
 API = "https://api.elevenlabs.io/v1"
 # Kanal ovozi: radio boshlovchisidek mayin, yoqimli ayol ovozi (SANJARBEK talabi).
-# Standart kutubxonadagi ayol ovozlari, birinchisi asosiy: Sarah, Matilda, Lily, Alice.
-DEFAULT_VOICES = ("EXAVITQu4vr4xnSDxMaL", "XrExE9yKIg1WjnnlVkGX", "pFZP5JQG7iQjIQuC4Bku",
+# Asosiy ovoz: Rachel (SANJARBEK tanlovi). Akkauntda bo'lmasa navbat bilan ayol ovozlari:
+# Sarah, Matilda, Lily, Alice.
+DEFAULT_VOICES = ("21m05zcH5m83TcN7ExXA", "EXAVITQu4vr4xnSDxMaL", "XrExE9yKIg1WjnnlVkGX", "pFZP5JQG7iQjIQuC4Bku",
                   "Xb7hH8MSUJpSbSDYk0k2")
 MALE_VOICES = {"JBFqnCBsd6RMkjVDRZzb", "pNInz6obpgDQGcFmaJgB"}
 # Yosh (16-18 yoshli qizdek), mayin va jonli ovoz uchun sozlamalar
@@ -39,9 +40,7 @@ def _tts(voice, script):
 
 
 def make_audio(script, out_path):
-    voice = env("ELEVENLABS_VOICE_ID", required=False)
-    if not voice or voice in MALE_VOICES:
-        voice = DEFAULT_VOICES[0]
+    voice = DEFAULT_VOICES[0]
     r = _tts(voice, script)
     if r.ok:
         print(f"4-agent: ovoz {voice} ishlatildi", flush=True)
