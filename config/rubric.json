@@ -1,0 +1,8 @@
+{
+  "name": "Claude maslahatlar",
+  "hashtag": "#ClaudeMaslahatlar",
+  "audience": "Robototexnika kursi o'quvchilari (maktab o'quvchilari va boshlovchi muhandislar)",
+  "language": "o'zbek (lotin yozuvi)",
+  "search_focus": "Claude (Anthropic) AI'dan robototexnika, Arduino, ESP32, sensorlar, dasturlash va loyiha qilishda foydalanish bo'yicha amaliy maslahatlar, yangi imkoniyatlar, prompt usullari",
+  "max_caption_chars": 1000
+}
