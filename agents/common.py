@@ -16,6 +16,8 @@ _client = None
 
 def env(name, default=None, required=True):
     val = os.getenv(name, default)
+    if isinstance(val, str):
+        val = val.strip()  # Secrets'ga nusxa olinganda bo'sh joy/yangi qator qo'shilib qolishi mumkin
     if required and not val:
         raise RuntimeError(f"{name} muhit o'zgaruvchisi berilmagan")
     return val

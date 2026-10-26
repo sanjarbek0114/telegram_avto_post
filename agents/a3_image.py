@@ -19,7 +19,7 @@ import requests
 from google.genai import errors as genai_errors
 from google.genai import types
 
-from .common import ROOT, _version, gemini, generate, parse_json
+from .common import ROOT, _version, env, gemini, generate, parse_json
 
 PREPARED = ROOT / "state/prepared"
 GALLERY = ROOT / "state/gallery"
@@ -104,7 +104,7 @@ def _gemini_image(prompt):
 
 
 def _huggingface(prompt):
-    token = os.getenv("HF_TOKEN")
+    token = env("HF_TOKEN", required=False)
     if not token:
         return None
     model = os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
@@ -135,7 +135,7 @@ def _remove_watermark(data):
 
 
 def _pollinations(prompt):
-    key = os.getenv("POLLINATIONS_KEY")
+    key = env("POLLINATIONS_KEY", required=False)
     params = {"width": 1024, "height": 1024, "nologo": "true", "model": "flux",
               "seed": random.randint(1, 10**6)}
     if key:
