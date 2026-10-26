@@ -4,6 +4,7 @@ import re
 import time
 from pathlib import Path
 
+import requests
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
@@ -24,7 +25,7 @@ def gemini():
     if _client is None:
         _client = genai.Client(
             api_key=env("GEMINI_API_KEY"),
-            http_options=types.HttpOptions(timeout=180_000, retry_options=types.HttpRetryOptions(attempts=1)),
+            http_options=types.HttpOptions(timeout=120_000, retry_options=types.HttpRetryOptions(attempts=1)),
         )
     return _client
 
@@ -70,9 +71,9 @@ def generate(kind, contents, config):
     """generate_content: band bo'lsa kutib qayta urinadi, keyin keyingi modelga o'tadi."""
     last = None
     for name in models(kind):
-        for attempt, wait in enumerate((0, 15, 45, 90)):
+        for attempt, wait in enumerate((0, 20, 60)):
             if wait:
-                print(f"{name} band, {wait} s kutib qayta urinish ({attempt + 1}/4)", flush=True)
+                print(f"{name} band, {wait} s kutib qayta urinish ({attempt + 1}/3)", flush=True)
                 time.sleep(wait)
             try:
                 t0 = time.time()
@@ -97,9 +98,39 @@ def ask(prompt, search=False, json_out=False):
         cfg["tools"] = [types.Tool(google_search=types.GoogleSearch())]
     elif json_out:
         cfg["response_mime_type"] = "application/json"
-    resp = generate("text", prompt, types.GenerateContentConfig(**cfg))
-    text = resp.text or ""
+    try:
+        text = generate("text", prompt, types.GenerateContentConfig(**cfg)).text or ""
+    except genai_errors.APIError as e:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise
+        print(f"Gemini ishlamadi ({e.code}), OpenAI matn modeliga o'tilmoqda", flush=True)
+        text = openai_chat(prompt, json_out)
     return parse_json(text) if json_out else text
+
+
+_openai_model = None
+OPENAI_PREFERRED = ("gpt-5-mini", "gpt-4.1-mini", "gpt-4o-mini")
+
+
+def openai_chat(prompt, json_out=False):
+    """Zaxira: Gemini band bo'lsa OpenAI Chat Completions."""
+    global _openai_model
+    headers = {"Authorization": f"Bearer {env('OPENAI_API_KEY')}"}
+    if _openai_model is None:
+        _openai_model = os.getenv("OPENAI_TEXT_MODEL")
+    if not _openai_model:
+        ids = [m["id"] for m in requests.get("https://api.openai.com/v1/models", headers=headers,
+                                             timeout=30).json().get("data", [])]
+        _openai_model = next((m for m in OPENAI_PREFERRED if m in ids), None) or next(
+            (m for m in sorted(ids, reverse=True) if m.startswith("gpt-") and "mini" in m), "gpt-4o-mini")
+        print(f"OpenAI matn modeli: {_openai_model}", flush=True)
+    body = {"model": _openai_model, "messages": [{"role": "user", "content": prompt}]}
+    if json_out:
+        body["response_format"] = {"type": "json_object"}
+    r = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body, timeout=180)
+    if r.status_code != 200:
+        raise RuntimeError(f"OpenAI matn xatosi {r.status_code}: {r.text[:300]}")
+    return r.json()["choices"][0]["message"]["content"]
 
 
 def parse_json(text):

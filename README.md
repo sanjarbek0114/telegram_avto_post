@@ -14,7 +14,7 @@ Matn 1024 belgidan uzun bo'lsa: avval rasm, keyin matn, ostidan audio.
 |---|---|---|
 | 1 | `agents/a1_research.py` | Yangi kirish g'oyalari va manbali faktlarni internetdan izlaydi |
 | 2 | `agents/a2_writer.py` | Post varianti, audio matni va rasm promptini yozadi |
-| 3 | `agents/a3_image.py` | Gemini rasm modeli (Nano Banana) bilan rasm |
+| 3 | `agents/a3_image.py` | OpenAI DALL-E 3 bilan rasm (yopilgan bo'lsa gpt-image-1) |
 | 4 | `agents/a4_audio.py` | ElevenLabs bilan MP3 audio |
 | 5 | `agents/a5_quality.py` | Telefon, havola, hashteglar o'zgarmaganini va faktlarni tekshiradi, ball 8 dan past bo'lsa qayta yozdiradi |
 | 6 | `agents/a6_publish.py` | Bot orqali kanalga chiqaradi, xato bo'lsa adminga xabar |
@@ -22,7 +22,7 @@ Matn 1024 belgidan uzun bo'lsa: avval rasm, keyin matn, ostidan audio.
 Navbat `state/history.json` da saqlanadi (workflow uni har kuni commit qiladi).
 
 ## Sozlash
-- Secrets: `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_CHAT_ID`.
+- Secrets: `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_CHAT_ID`.
 - Admin xabarlari kelishi uchun botga bir marta /start yozing.
 - Sinov: Actions > "Kunlik post" > Run workflow (dry_run). Natija Artifacts'da.
 
