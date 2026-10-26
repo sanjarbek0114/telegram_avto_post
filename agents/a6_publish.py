@@ -16,8 +16,12 @@ def _api(method, **kw):
     return data["result"]
 
 
-def publish(post_text, image_path, audio_path, title):
-    chat = env("TELEGRAM_CHANNEL_ID")
+def publish(post_text, image_path, audio_path, title, chat=None):
+    chat = chat or env("TELEGRAM_CHANNEL_ID")
+    if not image_path:
+        msg = _api("sendMessage", json={"chat_id": chat, "text": post_text,
+                                        "link_preview_options": {"is_disabled": True}})
+        return _send_audio(chat, msg, audio_path, title)
     with open(image_path, "rb") as img:
         if len(post_text) <= CAPTION_LIMIT:
             msg = _api("sendPhoto", data={"chat_id": chat, "caption": post_text}, files={"photo": img})
@@ -25,6 +29,10 @@ def publish(post_text, image_path, audio_path, title):
             _api("sendPhoto", data={"chat_id": chat}, files={"photo": img})
             msg = _api("sendMessage", json={"chat_id": chat, "text": post_text,
                                             "link_preview_options": {"is_disabled": True}})
+    return _send_audio(chat, msg, audio_path, title)
+
+
+def _send_audio(chat, msg, audio_path, title):
     if not audio_path:
         return msg["message_id"]
     with open(audio_path, "rb") as aud:

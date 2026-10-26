@@ -10,7 +10,9 @@ from dotenv import load_dotenv
 
 from agents.a1_research import find_angles, find_topics
 from agents.a2_writer import write_plan_post, write_tip_post
-from agents.a3_image import make_image
+import shutil
+
+from agents.a3_image import make_image, prepared_path
 from agents.a4_audio import make_audio
 from agents.a5_quality import review, rule_check
 from agents.a6_publish import notify_admin, publish
@@ -114,8 +116,9 @@ def main():
             meta, draft, qc = build_tip_post(style, history)
         (out / "post.txt").write_text(draft["post_text"], encoding="utf-8")
         (out / "audio_script.txt").write_text(draft["audio_script"], encoding="utf-8")
-        image = make_image(draft["image_prompt"], out / "image.png")
-        log("3-agent: rasm tayyor")
+        image, source = make_image(draft["image_prompt"], out / "image.png", meta.get("plan_n"),
+                                   meta.get("cycle"), keep_prepared=dry)
+        log(f"3-agent: rasm {'tayyor (' + source + ')' if image else 'yoq'}")
         try:
             audio = make_audio(draft["audio_script"], out / "audio.mp3")
             log("4-agent: audio tayyor")
@@ -126,6 +129,20 @@ def main():
 
         if dry:
             log(f"DRY RUN: natijalar {out} papkasida")
+            if image and source not in ("tayyorlangan", "galereya") and meta.get("plan_n"):
+                ready = prepared_path(meta["plan_n"], meta["cycle"])
+                ready.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(image, ready)
+                log(f"Rasm keyingi haqiqiy post uchun saqlandi: {ready.name}")
+            admin = os.getenv("TELEGRAM_ADMIN_CHAT_ID")
+            if admin:
+                try:
+                    notify_admin(f"🧪 Sinov (dry run): keyingi post ko'rinishi. Rasm manbasi: {source}, "
+                                 f"audio: {'bor' if audio else 'yoq'}")
+                    publish(draft["post_text"], image, audio, meta["topic"][:60], chat=admin)
+                    log("Sinov posti admin chatga yuborildi")
+                except Exception as e:  # noqa: BLE001
+                    log(f"Admin chatga yuborilmadi: {e}")
             return
         if args.publish_at:
             wait_until(args.publish_at)

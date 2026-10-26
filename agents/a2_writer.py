@@ -4,7 +4,7 @@ from .common import ask
 OUTPUT_SPEC = """Faqat JSON qaytar:
 {{"post_text": "tayyor post, oddiy matn (HTML/Markdown yo'q), emoji bilan",
   "audio_script": "post mazmunini 60-90 soniyada ovoz chiqarib aytish uchun sodda, jonli matn; emoji, hashteg va havolalarsiz",
-  "image_prompt": "rasm uchun inglizcha batafsil prompt: o'zbek bolalari/o'smirlar robototexnika bilan shug'ullanayotgan sahna, rasmda yozuv bo'lmasin"}}"""
+  "image_prompt": "rasm sahnasi uchun inglizcha 1-2 jumla: yorqin 3D Pixar uslubi; ko'zlari chaqnab turgan yoqimli robotlar, sxema yig'ayotgan baxtli o'zbek bolalari yoki zamonaviy robototexnika laboratoriyasi; abstrakt chiziqlar va yozuv bo'lmasin"}}"""
 
 
 def write_plan_post(plan_post, mode, cycle, angles=None, feedback=None):
