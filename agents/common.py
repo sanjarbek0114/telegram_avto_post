@@ -90,8 +90,8 @@ def generate(kind, contents, config):
                 last = e
                 code = getattr(e, "code", 504)  # mijoz tomonidagi timeout ham 504 deb hisoblanadi
                 print(f"  !! {name}: {code} {str(e)[:150]}", flush=True)
-                if code in (404, 504):
-                    break  # bu model yopilgan yoki javob bermayapti, keyingisiga o'tamiz
+                if code in (404, 504) or (code == 429 and "quota" in str(e).lower()):
+                    break  # model yopilgan, javob bermayapti yoki kvota tugagan: keyingisiga o'tamiz
                 if code not in RETRY_CODES:
                     raise
     raise last
@@ -140,10 +140,15 @@ def openai_chat(prompt, json_out=False):
 
 
 def parse_json(text):
-    m = re.search(r"\{.*\}|\[.*\]", text, re.S)
-    if not m:
-        raise ValueError(f"JSON topilmadi: {text[:300]}")
-    return json.loads(m.group(0))
+    """Javobdagi birinchi JSON obyekt/ro'yxatni oladi (```json bloklari va ortiqcha matnga chidamli)."""
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch in "{[":
+            try:
+                return decoder.raw_decode(text, i)[0]
+            except json.JSONDecodeError:
+                continue
+    raise ValueError(f"JSON topilmadi: {text[:300]}")
 
 
 def load_rubric():
