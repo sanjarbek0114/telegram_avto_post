@@ -1,9 +1,11 @@
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,14 +35,10 @@ def _version(name):
     return [float(n) for n in nums] or [0.0]
 
 
-def model(kind):
-    """Matn yoki rasm modelini tanlaydi: env da berilgan bo'lsa o'sha, aks holda eng yangi Flash."""
+def models(kind):
+    """Matn yoki rasm modellari ro'yxati: env da berilgan bo'lsa birinchi o'sha, keyin eng yangi Flash'lar."""
     if kind in _models:
         return _models[kind]
-    override = os.getenv("TEXT_MODEL" if kind == "text" else "IMAGE_MODEL")
-    if override:
-        _models[kind] = override
-        return override
     names = []
     for m in gemini().models.list():
         n = m.name.split("/")[-1]
@@ -49,15 +47,39 @@ def model(kind):
             continue
         if "flash" not in n or any(x in n for x in _SKIP):
             continue
-        is_image = "image" in n
-        if (kind == "image") == is_image:
+        if (kind == "image") == ("image" in n):
             names.append(n)
-    if not names:
+    stable = sorted((n for n in names if "preview" not in n and "exp" not in n), key=_version, reverse=True)
+    preview = sorted((n for n in names if n not in stable), key=_version, reverse=True)
+    override = os.getenv("TEXT_MODEL" if kind == "text" else "IMAGE_MODEL")
+    order = ([override] if override else []) + stable[:2] + preview[:1]
+    _models[kind] = list(dict.fromkeys(order))
+    if not _models[kind]:
         raise RuntimeError(f"Mos Gemini {kind} modeli topilmadi")
-    stable = [n for n in names if "preview" not in n and "exp" not in n] or names
-    _models[kind] = max(stable, key=_version)
-    print(f"Gemini {kind} modeli: {_models[kind]}", flush=True)
+    print(f"Gemini {kind} modellari: {_models[kind]}", flush=True)
     return _models[kind]
+
+
+RETRY_CODES = (429, 500, 502, 503, 504)
+
+
+def generate(kind, contents, config):
+    """generate_content: band bo'lsa kutib qayta urinadi, keyin keyingi modelga o'tadi."""
+    last = None
+    for name in models(kind):
+        for attempt, wait in enumerate((0, 15, 45, 90)):
+            if wait:
+                print(f"{name} band, {wait} s kutib qayta urinish ({attempt + 1}/4)", flush=True)
+                time.sleep(wait)
+            try:
+                return gemini().models.generate_content(model=name, contents=contents, config=config)
+            except genai_errors.APIError as e:
+                last = e
+                if e.code == 404:
+                    break  # bu model yopilgan, keyingisiga o'tamiz
+                if e.code not in RETRY_CODES:
+                    raise
+    raise last
 
 
 def ask(prompt, search=False, json_out=False):
@@ -67,11 +89,7 @@ def ask(prompt, search=False, json_out=False):
         cfg["tools"] = [types.Tool(google_search=types.GoogleSearch())]
     elif json_out:
         cfg["response_mime_type"] = "application/json"
-    resp = gemini().models.generate_content(
-        model=model("text"),
-        contents=prompt,
-        config=types.GenerateContentConfig(**cfg),
-    )
+    resp = generate("text", prompt, types.GenerateContentConfig(**cfg))
     text = resp.text or ""
     return parse_json(text) if json_out else text
 
