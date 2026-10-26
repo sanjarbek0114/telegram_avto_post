@@ -63,8 +63,8 @@ def compose_prompt(scene_hint, plan_n=None):
 def pollinations_prompt(plan_n=None):
     """Pollinations uchun qisqa, aniq inglizcha prompt (uzun matnni yaxshi tushunmaydi)."""
     scene = SCENES.get(plan_n, DEFAULT_SCENE)
-    return (f"Cute friendly 3D robot with glowing eyes, Pixar style, {scene}, bright robotics laboratory, "
-            "vivid colors, soft cinematic lighting, high quality, highly detailed, no text")
+    return (f"Cute friendly smiling 3D robot with big glowing blue eyes, Pixar style, {scene}, bright sunny "
+            "robotics laboratory, cheerful pastel colors, soft daylight, high quality, highly detailed, no text")
 
 
 def _imagen_models():
@@ -207,6 +207,7 @@ def generate_image(scene_hint, out_path, plan_n=None):
                 best = (data, source, score)
             if score >= GOOD_SCORE:
                 break
+            time.sleep(15)  # kalitsiz Pollinations tez-tez so'rovga 402 qaytaradi
         if best[2] >= GOOD_SCORE:
             break
     data, source, score = best
