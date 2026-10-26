@@ -14,7 +14,7 @@ Matn 1024 belgidan uzun bo'lsa: avval rasm, keyin matn, ostidan audio.
 |---|---|---|
 | 1 | `agents/a1_research.py` | Yangi kirish g'oyalari va manbali faktlarni internetdan izlaydi |
 | 2 | `agents/a2_writer.py` | Post varianti, audio matni va rasm promptini yozadi |
-| 3 | `agents/a3_image.py` | Rasm: Gemini Imagen → Gemini rasm modeli → Pollinations (bepul) → zaxira fon |
+| 3 | `agents/a3_image.py` | Rasm: Nano Banana → Gemini Imagen → Pollinations (bepul) → zaxira fon |
 | 4 | `agents/a4_audio.py` | ElevenLabs bilan MP3 audio |
 | 5 | `agents/a5_quality.py` | Telefon, havola, hashteglar o'zgarmaganini va faktlarni tekshiradi, ball 8 dan past bo'lsa qayta yozdiradi |
 | 6 | `agents/a6_publish.py` | Bot orqali kanalga chiqaradi, xato bo'lsa adminga xabar |

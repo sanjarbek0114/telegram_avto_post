@@ -1,6 +1,6 @@
 """3-agent: post rasmi.
 
-Navbat: 1) Gemini Imagen, 2) Gemini rasm modeli (Nano Banana), 3) Pollinations (bepul, kalitsiz),
+Navbat: 1) Nano Banana (Gemini rasm modeli), 2) Gemini Imagen, 3) Pollinations (bepul, kalitsiz),
 4) zaxira: Pillow bilan chizilgan rangli fon. Shunda rasm sababli post hech qachon to'xtab qolmaydi.
 """
 import io
@@ -46,7 +46,7 @@ def _gemini_image(prompt):
     try:
         resp = generate("image", prompt, types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"]))
     except Exception as e:  # noqa: BLE001 - keyingi manbaga o'tamiz
-        print(f"  !! gemini rasm: {str(e)[:150]}", flush=True)
+        print(f"  !! nano banana: {str(e)[:150]}", flush=True)
         return None
     for part in resp.candidates[0].content.parts:
         if part.inline_data and part.inline_data.data:
@@ -93,7 +93,7 @@ def _fallback_card():
 
 def make_image(image_prompt, out_path):
     prompt = f"{image_prompt}\n\n{STYLE}"
-    for source, fn in (("Imagen", _imagen), ("Gemini rasm", _gemini_image), ("Pollinations", _pollinations)):
+    for source, fn in (("Nano Banana", _gemini_image), ("Imagen", _imagen), ("Pollinations", _pollinations)):
         data = fn(prompt)
         if data:
             print(f"3-agent: rasm manbasi {source}", flush=True)
