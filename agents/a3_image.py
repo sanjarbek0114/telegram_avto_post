@@ -1,7 +1,7 @@
 """3-agent: Gemini (Nano Banana) bilan post rasmi."""
 from google.genai import types
 
-from .common import env, gemini
+from .common import gemini, model
 
 
 def make_image(image_prompt, out_path):
@@ -10,7 +10,7 @@ def make_image(image_prompt, out_path):
         "for a Telegram robotics education channel. No text, no letters, no logos."
     )
     resp = gemini().models.generate_content(
-        model=env("IMAGE_MODEL", "gemini-2.5-flash-image"),
+        model=model("image"),
         contents=prompt,
         config=types.GenerateContentConfig(response_modalities=["IMAGE"]),
     )

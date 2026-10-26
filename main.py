@@ -8,13 +8,14 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
-from agents.a1_research import find_topics
-from agents.a2_writer import write_post
+from agents.a1_research import find_angles, find_topics
+from agents.a2_writer import write_plan_post, write_tip_post
 from agents.a3_image import make_image
 from agents.a4_audio import make_audio
-from agents.a5_quality import review
+from agents.a5_quality import review, rule_check
 from agents.a6_publish import notify_admin, publish
-from agents.common import ROOT, load_history, load_rubric, load_style, save_history
+from agents.common import (ROOT, load_history, load_plan, load_rubric, load_settings, load_style,
+                           save_history)
 
 TZ = ZoneInfo("Asia/Tashkent")
 MAX_REWRITES = 3
@@ -36,18 +37,57 @@ def wait_until(hhmm):
         time.sleep(secs)
 
 
-def build_post(rubric, style, history):
+def next_kind(settings, history):
+    if not settings.get("alternate_with_claude_tips"):
+        return "plan"
+    last = history["posts"][-1]["kind"] if history["posts"] else "tip"
+    return "tip" if last == "plan" else "plan"
+
+
+def build_plan_post(settings, style, history):
+    plan = load_plan()
+    done = sum(1 for p in history["posts"] if p.get("kind", "plan") == "plan")
+    post = plan[done % len(plan)]
+    cycle = done // len(plan) + 1
+    mode = settings.get("mode", "rewrite")
+    if cycle == 1 and mode == "rewrite":
+        mode = "exact"  # birinchi aylanishda asl matn chiqadi
+    log(f"Kontent-plan: {post['n']}-post ({post['theme']}), {cycle}-aylanish, rejim: {mode}")
+    angles = find_angles(post, cycle) if mode == "rewrite" else None
+    if angles:
+        log(f"1-agent: {len(angles.get('hooks', []))} ta g'oya, {len(angles.get('facts', []))} ta fakt")
+    feedback = None
+    for attempt in range(1, MAX_REWRITES + 1):
+        draft = write_plan_post(post, mode, cycle, angles, feedback)
+        qc = review(draft, post["theme"], style, original=post["text"])
+        log(f"5-agent: urinish {attempt}, ball {qc['score']}, muammolar: {qc['issues']}")
+        if qc["ok"]:
+            meta = {"kind": "plan", "plan_n": post["n"], "cycle": cycle, "topic": post["theme"]}
+            return meta, draft, qc
+        feedback = "; ".join(qc["issues"])
+    if mode != "exact":
+        log("Yangi variant o'tmadi, asl matn bilan chiqariladi")
+        draft = write_plan_post(post, "exact", cycle)
+        if not rule_check(draft, post["text"]):
+            qc = {"ok": True, "score": None, "issues": ["asl matn"]}
+            meta = {"kind": "plan", "plan_n": post["n"], "cycle": cycle, "topic": post["theme"]}
+            return meta, draft, qc
+    raise RuntimeError(f"{post['n']}-post sifat nazoratidan o'tmadi: {feedback}")
+
+
+def build_tip_post(style, history):
+    rubric = load_rubric()
     topics = find_topics(rubric, history)
     log(f"1-agent: {len(topics)} ta mavzu topildi")
     for topic in topics:
         log(f"Mavzu: {topic['topic']}")
         feedback = None
         for attempt in range(1, MAX_REWRITES + 1):
-            draft = write_post(topic, rubric, style, feedback)
-            qc = review(draft, topic, rubric, style)
+            draft = write_tip_post(topic, rubric, style, feedback)
+            qc = review(draft, topic["topic"], style, hashtag=rubric["hashtag"])
             log(f"5-agent: urinish {attempt}, ball {qc['score']}, muammolar: {qc['issues']}")
             if qc["ok"]:
-                return topic, draft, qc
+                return {"kind": "tip", "topic": topic["topic"]}, draft, qc
             feedback = "; ".join(qc["issues"])
     raise RuntimeError("Hech bir mavzu sifat nazoratidan o'tmadi")
 
@@ -62,11 +102,15 @@ def main():
 
     out = ROOT / "out" / datetime.now(TZ).strftime("%Y-%m-%d")
     out.mkdir(parents=True, exist_ok=True)
-    rubric, style, history = load_rubric(), load_style(), load_history()
+    settings, style, history = load_settings(), load_style(), load_history()
 
     try:
-        topic, draft, qc = build_post(rubric, style, history)
-        (out / "post.html").write_text(draft["post_html"], encoding="utf-8")
+        if next_kind(settings, history) == "plan":
+            meta, draft, qc = build_plan_post(settings, style, history)
+        else:
+            meta, draft, qc = build_tip_post(style, history)
+        (out / "post.txt").write_text(draft["post_text"], encoding="utf-8")
+        (out / "audio_script.txt").write_text(draft["audio_script"], encoding="utf-8")
         image = make_image(draft["image_prompt"], out / "image.png")
         log("3-agent: rasm tayyor")
         audio = make_audio(draft["audio_script"], out / "audio.mp3")
@@ -77,11 +121,11 @@ def main():
             return
         if args.publish_at:
             wait_until(args.publish_at)
-        msg_id = publish(draft["post_html"], image, audio, topic["topic"][:60])
+        msg_id = publish(draft["post_text"], image, audio, meta["topic"][:60])
         log(f"6-agent: chiqarildi, message_id={msg_id}")
         history["posts"].append({
             "date": datetime.now(TZ).date().isoformat(),
-            "topic": topic["topic"],
+            **meta,
             "score": qc["score"],
             "message_id": msg_id,
         })

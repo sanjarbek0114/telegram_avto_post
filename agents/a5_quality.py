@@ -3,47 +3,62 @@ import re
 
 from .common import ask
 
-ALLOWED_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "blockquote", "tg-spoiler"}
+PHONE = re.compile(r"\+?\d[\d\s\-]{8,}\d")
+URL = re.compile(r"https?://\S+|t\.me/\S+")
 
 
-def rule_check(draft, rubric):
+def rule_check(draft, original=None, hashtag=None):
     issues = []
-    html = draft.get("post_html", "")
-    plain = re.sub(r"<[^>]+>", "", html)
-    if len(plain) > 1024:
-        issues.append(f"Matn {len(plain)} belgi, 1024 dan oshmasin")
-    if len(plain) < 200:
+    text = draft.get("post_text", "")
+    if len(text) > 4000:
+        issues.append(f"Matn {len(text)} belgi, 4000 dan oshmasin")
+    if len(text) < 300:
         issues.append("Matn juda qisqa")
-    for tag in re.findall(r"</?([a-zA-Z-]+)", html):
-        if tag.lower() not in ALLOWED_TAGS:
-            issues.append(f"Telegram qo'llamaydigan teg: <{tag}>")
-    for tag in ("b", "i", "code"):
-        if html.count(f"<{tag}>") != html.count(f"</{tag}>"):
-            issues.append(f"<{tag}> yopilmagan")
-    if rubric["hashtag"].lower() not in html.lower():
-        issues.append(f"{rubric['hashtag']} hashtegi yo'q")
-    if len(draft.get("audio_script", "")) < 100:
+    if re.search(r"</?[a-z]+>|\*\*", text):
+        issues.append("HTML/Markdown belgilari bo'lmasin, oddiy matn kerak")
+    if len(draft.get("audio_script", "")) < 150:
         issues.append("Audio matni juda qisqa")
+    if hashtag and hashtag.lower() not in text.lower():
+        issues.append(f"{hashtag} hashtegi yo'q")
+    if original:
+        norm = lambda s: re.sub(r"\D", "", s)
+        orig_phones = {norm(p) for p in PHONE.findall(original)}
+        for p in PHONE.findall(text):
+            if norm(p) not in orig_phones:
+                issues.append(f"Asl matnda yo'q telefon raqami: {p}")
+        for p in orig_phones:
+            if p not in {norm(x) for x in PHONE.findall(text)}:
+                issues.append("Asl matndagi telefon raqami tushib qolgan")
+        orig_urls = set(URL.findall(original))
+        for u in URL.findall(text):
+            if u not in orig_urls:
+                issues.append(f"Asl matnda yo'q havola: {u}")
+        for u in orig_urls:
+            if u not in text:
+                issues.append(f"Havola tushib qolgan: {u}")
+        for tag in re.findall(r"#\w+", original):
+            if tag not in text:
+                issues.append(f"Hashteg tushib qolgan: {tag}")
     return issues
 
 
-def review(draft, topic, rubric, style):
-    issues = rule_check(draft, rubric)
+def review(draft, theme, style, original=None, hashtag=None):
+    issues = rule_check(draft, original, hashtag)
     if issues:
         return {"ok": False, "score": 0, "issues": issues}
-    prompt = f"""Sen qattiq muharrirsan. Quyidagi Telegram postini tekshir.
-Rubrika: {rubric['name']}. Til: {rubric['language']}. Mavzu: {topic['topic']}
+    ref = f"\nASL POST (faktlar shu bilan mos bo'lishi shart):\n{original}\n" if original else ""
+    prompt = f"""Sen qattiq muharrirsan. Telegram postini tekshir. Mavzu: {theme}
 Kutilgan stil:
 {style}
-
-POST:
-{draft['post_html']}
+{ref}
+TEKSHIRILADIGAN POST:
+{draft['post_text']}
 
 AUDIO MATN:
 {draft['audio_script']}
 
-Bahola (1-10): faktik aniqlik (uydirma yo'qmi), o'zbek tili imlosi va grammatikasi,
-stilga moslik, amaliy foyda, xavfsizlik (zararli maslahat yo'q).
+Bahola (1-10): faktik aniqlik (asl matnda yo'q va'da, narx, sana, kontakt qo'shilmaganmi),
+o'zbek tili imlosi va grammatikasi, stilga moslik, o'quvchiga foyda, xavfsizlik.
 Faqat JSON: {{"score": 0-10, "issues": ["..."]}}"""
     res = ask(prompt, json_out=True)
     score = float(res.get("score", 0))
