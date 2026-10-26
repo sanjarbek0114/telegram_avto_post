@@ -4,6 +4,7 @@ import re
 import time
 from pathlib import Path
 
+import httpx
 import requests
 from google import genai
 from google.genai import errors as genai_errors
@@ -85,12 +86,13 @@ def generate(kind, contents, config):
                 resp = gemini().models.generate_content(model=name, contents=contents, config=config)
                 print(f"  <- {name}: {time.time() - t0:.0f} s", flush=True)
                 return resp
-            except genai_errors.APIError as e:
+            except (genai_errors.APIError, httpx.TimeoutException) as e:
                 last = e
-                print(f"  !! {name}: {e.code} {str(e)[:150]}", flush=True)
-                if e.code in (404, 504):
-                    break  # bu model yopilgan, keyingisiga o'tamiz
-                if e.code not in RETRY_CODES:
+                code = getattr(e, "code", 504)  # mijoz tomonidagi timeout ham 504 deb hisoblanadi
+                print(f"  !! {name}: {code} {str(e)[:150]}", flush=True)
+                if code in (404, 504):
+                    break  # bu model yopilgan yoki javob bermayapti, keyingisiga o'tamiz
+                if code not in RETRY_CODES:
                     raise
     raise last
 
@@ -104,10 +106,10 @@ def ask(prompt, search=False, json_out=False):
         cfg["response_mime_type"] = "application/json"
     try:
         text = generate("text", prompt, types.GenerateContentConfig(**cfg)).text or ""
-    except genai_errors.APIError as e:
+    except (genai_errors.APIError, httpx.TimeoutException) as e:
         if not os.getenv("OPENAI_API_KEY"):
             raise
-        print(f"Gemini ishlamadi ({e.code}), OpenAI matn modeliga o'tilmoqda", flush=True)
+        print(f"Gemini ishlamadi ({getattr(e, 'code', 'timeout')}), OpenAI matn modeliga o'tilmoqda", flush=True)
         text = openai_chat(prompt, json_out)
     return parse_json(text) if json_out else text
 
