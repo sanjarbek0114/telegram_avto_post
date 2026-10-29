@@ -26,6 +26,15 @@
       "topic": "Kurs dasturi",
       "score": null,
       "message_id": 13
+    },
+    {
+      "date": "2026-10-29",
+      "kind": "plan",
+      "plan_n": 4,
+      "cycle": 1,
+      "topic": "Kurs yakunidagi natija",
+      "score": null,
+      "message_id": 15
     }
   ]
 }
