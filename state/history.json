@@ -35,6 +35,15 @@
       "topic": "Kurs yakunidagi natija",
       "score": null,
       "message_id": 15
+    },
+    {
+      "date": "2026-10-30",
+      "kind": "plan",
+      "plan_n": 5,
+      "cycle": 1,
+      "topic": "Robototexnika bilan pul topish",
+      "score": null,
+      "message_id": 17
     }
   ]
 }
