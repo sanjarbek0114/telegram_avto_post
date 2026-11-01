@@ -53,6 +53,15 @@
       "topic": "Kursga jalb qilish",
       "score": 8.0,
       "message_id": 20
+    },
+    {
+      "date": "2026-11-01",
+      "kind": "plan",
+      "plan_n": 2,
+      "cycle": 2,
+      "topic": "Darslar qanday o’tiladi?",
+      "score": 9.0,
+      "message_id": 22
     }
   ]
 }
