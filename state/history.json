@@ -62,6 +62,15 @@
       "topic": "Darslar qanday o’tiladi?",
       "score": 9.0,
       "message_id": 22
+    },
+    {
+      "date": "2026-11-02",
+      "kind": "plan",
+      "plan_n": 3,
+      "cycle": 2,
+      "topic": "Kurs dasturi",
+      "score": 8.0,
+      "message_id": 25
     }
   ]
 }
