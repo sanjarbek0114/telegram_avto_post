@@ -80,6 +80,15 @@
       "topic": "Kurs yakunidagi natija",
       "score": 9.0,
       "message_id": 28
+    },
+    {
+      "date": "2026-11-05",
+      "kind": "plan",
+      "plan_n": 5,
+      "cycle": 2,
+      "topic": "Robototexnika bilan pul topish",
+      "score": 8.0,
+      "message_id": 30
     }
   ]
 }
